@@ -112,10 +112,10 @@ const CircularItem = memo(function CircularItem({
         <Image
           src={getImagePath(item.type) || "/placeholder.svg"}
           alt={item.type}
-          fill
-          style={{ 
-            objectFit: "contain"
-          }}
+          width={item.size}
+          height={item.size}
+          className="rounded-full"
+          priority={item.type === "bigsur"}
         />
       </div>
     </div>

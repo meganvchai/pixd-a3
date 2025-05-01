@@ -49,20 +49,33 @@ const GroupLabel = memo(function GroupLabel({ group, items, isVisible }: GroupLa
 
     // Only make API call if we have valid items
     if (groupItems.length > 0 && groupItems.some(i => i.city || i.year || i.type || i.name)) {
+      console.log('Sending items to Gemini API:', groupItems);
+      
       fetch("/api/generate-group-name", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: groupItems }),
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
           console.log("Gemini API response:", data);
-          setLabel(data.groupName || "Group");
+          if (data.groupName && data.groupName !== "Group") {
+            setLabel(data.groupName);
+          } else {
+            console.warn("Received default group name from API");
+          }
         })
         .catch(error => {
           console.error("Error fetching group name:", error);
           setLabel("Group");
         });
+    } else {
+      console.log('No valid items for group:', groupItems);
     }
   }, [group.items.join(","), isClient])
 

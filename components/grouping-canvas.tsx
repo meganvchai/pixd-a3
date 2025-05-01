@@ -92,31 +92,26 @@ export default function GroupingCanvas() {
     }))
   }
 
-  const [items, setItems] = useState<Item[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedItems = localStorage.getItem('canvasItems')
-      if (savedItems) {
-        return JSON.parse(savedItems)
-      }
-      // Only generate random positions once on first load
+  const [items, setItems] = useState<Item[]>([])
+  const [isClient, setIsClient] = useState(false)
+
+  // Initialize items on client-side only
+  useEffect(() => {
+    setIsClient(true)
+    const savedItems = localStorage.getItem('canvasItems')
+    if (savedItems) {
+      setItems(JSON.parse(savedItems))
+    } else {
       const newItems = getInitialItems()
       localStorage.setItem('canvasItems', JSON.stringify(newItems))
-      return newItems
+      setItems(newItems)
     }
-    return getInitialItems()
-  })
+  }, [])
 
   const [draggingItem, setDraggingItem] = useState<Item | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   
-  const [groups, setGroups] = useState<Group[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedGroups = localStorage.getItem('canvasGroups')
-      return savedGroups ? JSON.parse(savedGroups) : []
-    }
-    return []
-  })
-
+  const [groups, setGroups] = useState<Group[]>([])
   const [mergeAnimations, setMergeAnimations] = useState<Record<number, MergeAnimation>>({})
   const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null)
 
@@ -127,16 +122,16 @@ export default function GroupingCanvas() {
 
   // Save to localStorage whenever items or groups change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isClient) {
       localStorage.setItem('canvasItems', JSON.stringify(items))
     }
-  }, [items])
+  }, [items, isClient])
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isClient) {
       localStorage.setItem('canvasGroups', JSON.stringify(groups))
     }
-  }, [groups])
+  }, [groups, isClient])
 
   // Update the ref when items change
   useEffect(() => {
@@ -388,6 +383,10 @@ export default function GroupingCanvas() {
     [groups],
   )
 
+  if (!isClient) {
+    return <div className="flex-grow relative overflow-auto" style={{ minHeight: "600px", backgroundColor: "#E9E9E9" }} />
+  }
+
   return (
     <div className="flex flex-col h-screen">
       <div
@@ -411,7 +410,6 @@ export default function GroupingCanvas() {
                 key={`group-container-${group.id}`}
                 style={{
                   position: "relative",
-                  // No fading effect
                 }}
               >
                 <div
