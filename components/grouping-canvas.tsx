@@ -35,18 +35,18 @@ interface MergeAnimation {
 export default function GroupingCanvas() {
   // Item settings
   const ITEM_SIZE = 100
-  const PROXIMITY_THRESHOLD = 80
+  const PROXIMITY_THRESHOLD = 100
   const CANVAS_WIDTH = 1200
   const CANVAS_HEIGHT = 800
 
   // Define specific colors for group backgrounds
   const GROUP_COLORS = [
-    "#EE7C87", // Pinkish-red
-    "#FFFA9F", // Light yellow
-    "#DBE7AB", // Light green
-    "#93D4FF", // Light blue
-    "#D3C3EB", // Light purple
-    "#FECEDA", // Light pink
+    "#FDCDD9", // Pink
+    "#F3AB88", // Orange
+    "#FEF8CE", // Yellow
+    "#DBE7AB", // Green
+    "#93D4FF", // Blue
+    "#C3C1E0", // Purple
   ]
 
   // Helper function to generate random position within canvas bounds
@@ -234,7 +234,7 @@ export default function GroupingCanvas() {
             .map((id) => prevGroups.find((g) => g.id === id))
             .filter((g): g is Group => g !== undefined),
           startTime: Date.now(),
-          duration: 800, // Longer animation duration for more fluid effect
+          duration: 200, // Faster, less noticeable animation
         }
       }
     })
@@ -405,15 +405,13 @@ export default function GroupingCanvas() {
             const isDragging = isGroupBeingDragged(group)
             const mergeAnimation = mergeAnimations[group.id]
             const isHovered = hoveredGroupId === group.id
-            const shouldFade = hoveredGroupId !== null && !isHovered
 
             return (
               <div
                 key={`group-container-${group.id}`}
                 style={{
                   position: "relative",
-                  opacity: shouldFade ? 0.5 : 1,
-                  transition: "opacity 0.3s ease-in-out",
+                  // No fading effect
                 }}
               >
                 <div
@@ -460,7 +458,6 @@ export default function GroupingCanvas() {
         {items.map((item) => {
           const itemGroupId = getItemGroupId(item.id)
           const isHovered = hoveredGroupId === itemGroupId
-          const shouldFade = hoveredGroupId !== null && !isHovered
 
           return (
             <CircularItem
@@ -469,20 +466,12 @@ export default function GroupingCanvas() {
               isBeingDragged={draggingItem?.id === item.id}
               isDeleteMode={false}
               onMouseDown={handleItemMouseDown}
-              isFaded={shouldFade}
               groupId={itemGroupId?.toString() ?? ""}
               onMouseEnter={() => itemGroupId && handleGroupMouseEnter(itemGroupId)}
               onMouseLeave={handleGroupMouseLeave}
             />
           )
         })}
-      </div>
-
-      <div className="bg-gray-100 p-2 text-sm text-gray-600">
-        <p>
-          Drag items freely around the canvas. Items will automatically group with organic, fluid backgrounds. Hover
-          over a group or any item within it to see its label.
-        </p>
       </div>
     </div>
   )

@@ -10,6 +10,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Hal Timezone';
+  src: url('/fonts/HalTimezone-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 255, 255, 255;

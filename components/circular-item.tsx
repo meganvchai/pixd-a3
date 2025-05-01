@@ -25,7 +25,7 @@ interface CircularItemProps {
   isBeingDragged: boolean
   isDeleteMode: boolean
   onMouseDown: (e: React.MouseEvent, item: Item) => void
-  isFaded: boolean
+  isFaded?: boolean
   groupId: string
   onMouseEnter: () => void
   onMouseLeave: () => void
@@ -37,7 +37,7 @@ const CircularItem = memo(function CircularItem({
   isBeingDragged,
   isDeleteMode,
   onMouseDown,
-  isFaded,
+  isFaded = false,
   groupId,
   onMouseEnter,
   onMouseLeave,

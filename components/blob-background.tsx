@@ -140,8 +140,8 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
 
       // Add subtle pulsation and wobble
       const time = timeRef.current
-      const pulseFactor = 1 + Math.sin(time * 2) * 0.03 // Reduced pulsation
-      const wobbleAmount = 1.5 // Reduced wobble amount for smoother edges
+      const pulseFactor = 1 + Math.sin(time * 2) * 0.01 // Even more subtle pulsation
+      const wobbleAmount = 0.2 // Much less wobble for a more stable appearance
 
       ctx.beginPath()
 
@@ -226,7 +226,7 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
       const time = timeRef.current
       const noisyPoints = controlPoints.map((point: Point) => {
         const noise = noiseRef.current?.(point.x / 100 + time, point.y / 100 + time) ?? 0
-        const wobbleAmount = 2 // Reduced wobble amount for smoother edges
+        const wobbleAmount = 0.5 // Much less wobble for a more stable group blob
         return {
           ...point,
           x: point.x + noise * wobbleAmount,

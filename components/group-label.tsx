@@ -1,7 +1,7 @@
 "use client"
 
-import { memo } from "react"
-import { generateGroupLabel } from "@/lib/item-attributes"
+import { memo, useEffect, useState } from "react"
+import { archiveObjects } from "../data/objects"
 
 interface GroupLabelProps {
   group: {
@@ -19,14 +19,52 @@ interface GroupLabelProps {
 }
 
 const GroupLabel = memo(function GroupLabel({ group, items, isVisible }: GroupLabelProps) {
-  // Find the items in this group
-  const groupItems = items.filter((item) => group.items.includes(item.id))
+  const [label, setLabel] = useState("Group")
+  const [isClient, setIsClient] = useState(false)
 
-  // Get the item types
-  const itemTypes = groupItems.map((item) => item.type)
+  // Set isClient to true after mount to avoid hydration mismatch
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
-  // Generate a label based on common attributes
-  const label = generateGroupLabel(itemTypes)
+  useEffect(() => {
+    if (!isClient) return // Skip on server-side
+
+    const groupItems = items
+      .filter((item) => group.items.includes(item.id))
+      .map(item => {
+        const archiveObj = archiveObjects.find(obj => obj.id === `object-${item.id}`)
+        return archiveObj ? {
+          city: archiveObj.city,
+          year: archiveObj.year,
+          type: archiveObj.type,
+          name: archiveObj.name,
+        } : {
+          city: "",
+          year: "",
+          type: "",
+          name: "",
+        }
+      })
+
+    // Only make API call if we have valid items
+    if (groupItems.length > 0 && groupItems.some(i => i.city || i.year || i.type || i.name)) {
+      fetch("/api/generate-group-name", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: groupItems }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Gemini API response:", data);
+          setLabel(data.groupName || "Group");
+        })
+        .catch(error => {
+          console.error("Error fetching group name:", error);
+          setLabel("Group");
+        });
+    }
+  }, [group.items.join(","), isClient])
 
   // Don't show labels for single items
   if (group.isSingle) {
@@ -37,7 +75,7 @@ const GroupLabel = memo(function GroupLabel({ group, items, isVisible }: GroupLa
     <div
       style={{
         position: "absolute",
-        top: -30,
+        bottom: "-8px",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 5,
@@ -49,7 +87,7 @@ const GroupLabel = memo(function GroupLabel({ group, items, isVisible }: GroupLa
         transition: "opacity 0.2s ease-in-out",
         pointerEvents: "none",
         fontFamily: "HAL Timezone Unlicensed, sans-serif",
-        fontSize: "18px",
+        fontSize: "16px",
         textAlign: "center",
         padding: "4px 8px",
         color: "#000000",
