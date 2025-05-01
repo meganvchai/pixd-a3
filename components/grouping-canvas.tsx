@@ -5,10 +5,39 @@ import CircularItem from "./circular-item"
 import BlobBackground from "./blob-background"
 import GroupLabel from "./group-label"
 
+interface Item {
+  id: number
+  type: string
+  groupId: number
+  x: number
+  y: number
+  size: number
+}
+
+interface Group {
+  id: number
+  items: number[]
+  isSingle: boolean
+  x: number
+  y: number
+  width: number
+  height: number
+  itemPositions: Array<{ x: number; y: number; size: number }>
+}
+
+interface MergeAnimation {
+  targetGroup: Group
+  sourceGroups: Group[]
+  startTime: number
+  duration: number
+}
+
 export default function GroupingCanvas() {
   // Item settings
-  const ITEM_SIZE = 100 // Increased from 80 to 100 for larger images
-  const PROXIMITY_THRESHOLD = 80 // Distance threshold for grouping items
+  const ITEM_SIZE = 100
+  const PROXIMITY_THRESHOLD = 80
+  const CANVAS_WIDTH = 1200
+  const CANVAS_HEIGHT = 800
 
   // Define specific colors for group backgrounds
   const GROUP_COLORS = [
@@ -20,32 +49,94 @@ export default function GroupingCanvas() {
     "#FECEDA", // Light pink
   ]
 
-  // Define initial items with free positioning
-  const initialItems = [
-    { id: 1, type: "carbone", groupId: 1, x: 100, y: 150, size: ITEM_SIZE },
-    { id: 2, type: "bigsur", groupId: 2, x: 500, y: 200, size: ITEM_SIZE },
-    { id: 3, type: "calpig", groupId: 3, x: 350, y: 300, size: ITEM_SIZE },
-    { id: 4, type: "daytrip", groupId: 3, x: 420, y: 280, size: ITEM_SIZE },
-    { id: 5, type: "dishoom", groupId: 3, x: 390, y: 350, size: ITEM_SIZE },
-    { id: 6, type: "gudetama", groupId: 1, x: 150, y: 180, size: ITEM_SIZE },
-    { id: 7, type: "fournee", groupId: 4, x: 600, y: 400, size: ITEM_SIZE },
-    { id: 8, type: "berkeley", groupId: 2, x: 550, y: 230, size: ITEM_SIZE },
-    { id: 9, type: "centralpark", groupId: 5, x: 200, y: 350, size: ITEM_SIZE },
-    { id: 10, type: "cat", groupId: 5, x: 150, y: 400, size: ITEM_SIZE },
-  ]
+  // Helper function to generate random position within canvas bounds
+  const getRandomPosition = () => {
+    const padding = ITEM_SIZE * 2 // Ensure items don't spawn too close to edges
+    return {
+      x: padding + Math.random() * (CANVAS_WIDTH - padding * 2),
+      y: padding + Math.random() * (CANVAS_HEIGHT - padding * 2)
+    }
+  }
 
-  const [items, setItems] = useState(initialItems)
-  const [draggingItem, setDraggingItem] = useState(null)
+  // Define initial items with random positioning
+  const getInitialItems = (): Item[] => {
+    const items = [
+      { id: 1, type: "carbone", groupId: 1, size: ITEM_SIZE },
+      { id: 2, type: "bigsur", groupId: 2, size: ITEM_SIZE },
+      { id: 3, type: "calpig", groupId: 3, size: ITEM_SIZE },
+      { id: 4, type: "daytrip", groupId: 4, size: ITEM_SIZE },
+      { id: 5, type: "dishoom", groupId: 5, size: ITEM_SIZE },
+      { id: 6, type: "gudetama", groupId: 6, size: ITEM_SIZE },
+      { id: 7, type: "fournee", groupId: 7, size: ITEM_SIZE },
+      { id: 8, type: "berkeley", groupId: 8, size: ITEM_SIZE },
+      { id: 9, type: "centralpark", groupId: 9, size: ITEM_SIZE },
+      { id: 10, type: "cat", groupId: 10, size: ITEM_SIZE },
+      { id: 11, type: "matcha", groupId: 11, size: ITEM_SIZE },
+      { id: 12, type: "moma", groupId: 12, size: ITEM_SIZE },
+      { id: 13, type: "jr", groupId: 13, size: ITEM_SIZE },
+      { id: 14, type: "nyMetro", groupId: 14, size: ITEM_SIZE },
+      { id: 15, type: "tenryuji", groupId: 15, size: ITEM_SIZE },
+      { id: 16, type: "volleyball", groupId: 16, size: ITEM_SIZE },
+      { id: 17, type: "pickle", groupId: 17, size: ITEM_SIZE },
+      { id: 18, type: "recycle", groupId: 18, size: ITEM_SIZE },
+      { id: 19, type: "whiteWhale", groupId: 19, size: ITEM_SIZE },
+      { id: 20, type: "pittsburgh", groupId: 20, size: ITEM_SIZE },
+      { id: 21, type: "helloKitty", groupId: 21, size: ITEM_SIZE },
+      { id: 22, type: "miffy", groupId: 22, size: ITEM_SIZE },
+      { id: 23, type: "olive", groupId: 23, size: ITEM_SIZE }
+    ]
+
+    return items.map(item => ({
+      ...item,
+      ...getRandomPosition()
+    }))
+  }
+
+  const [items, setItems] = useState<Item[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedItems = localStorage.getItem('canvasItems')
+      if (savedItems) {
+        return JSON.parse(savedItems)
+      }
+      // Only generate random positions once on first load
+      const newItems = getInitialItems()
+      localStorage.setItem('canvasItems', JSON.stringify(newItems))
+      return newItems
+    }
+    return getInitialItems()
+  })
+
+  const [draggingItem, setDraggingItem] = useState<Item | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [isDeleteMode, setIsDeleteMode] = useState(false)
-  const [groups, setGroups] = useState([])
-  const [mergeAnimations, setMergeAnimations] = useState({})
-  const [hoveredGroupId, setHoveredGroupId] = useState(null)
+  
+  const [groups, setGroups] = useState<Group[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedGroups = localStorage.getItem('canvasGroups')
+      return savedGroups ? JSON.parse(savedGroups) : []
+    }
+    return []
+  })
+
+  const [mergeAnimations, setMergeAnimations] = useState<Record<number, MergeAnimation>>({})
+  const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null)
 
   // Store previous groups in a ref to avoid triggering re-renders
-  const previousGroupsRef = useRef([])
-  const canvasRef = useRef(null)
-  const itemsRef = useRef(items)
+  const previousGroupsRef = useRef<Group[]>([])
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const itemsRef = useRef<Item[]>(items)
+
+  // Save to localStorage whenever items or groups change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('canvasItems', JSON.stringify(items))
+    }
+  }, [items])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('canvasGroups', JSON.stringify(groups))
+    }
+  }, [groups])
 
   // Update the ref when items change
   useEffect(() => {
@@ -53,22 +144,18 @@ export default function GroupingCanvas() {
   }, [items])
 
   // Get color for a group based on its ID
-  const getGroupColor = useCallback((id) => {
-    // Use modulo to handle more groups than colors
+  const getGroupColor = useCallback((id: number): string => {
     const colorIndex = (id - 1) % GROUP_COLORS.length
     return GROUP_COLORS[colorIndex]
   }, [])
 
   // Handle mouse down on an item
   const handleItemMouseDown = useCallback(
-    (e, item) => {
-      e.preventDefault() // Prevent default to improve drag behavior
+    (e: React.MouseEvent<Element, MouseEvent>, item: Item) => {
+      e.preventDefault()
       e.stopPropagation()
 
-      if (isDeleteMode) {
-        setItems((prevItems) => prevItems.filter((i) => i.id !== item.id))
-        return
-      }
+      if (!canvasRef.current) return
 
       const rect = canvasRef.current.getBoundingClientRect()
       const x = e.clientX - rect.left
@@ -83,13 +170,13 @@ export default function GroupingCanvas() {
       // Store the current groups state before dragging
       previousGroupsRef.current = [...groups]
     },
-    [isDeleteMode, groups],
+    [groups],
   )
 
   // Handle mouse move
   const handleMouseMove = useCallback(
-    (e) => {
-      if (!draggingItem) return
+    (e: React.MouseEvent) => {
+      if (!draggingItem || !canvasRef.current) return
 
       const rect = canvasRef.current.getBoundingClientRect()
       const x = e.clientX - rect.left
@@ -117,12 +204,12 @@ export default function GroupingCanvas() {
   }, [draggingItem, groups])
 
   // Detect group merges and set up animations
-  const detectGroupMerges = useCallback((prevGroups, currentGroups) => {
+  const detectGroupMerges = useCallback((prevGroups: Group[], currentGroups: Group[]) => {
     // Skip if no previous groups
     if (!prevGroups || prevGroups.length === 0) return
 
     // Find groups that have merged
-    const newMergeAnimations = {}
+    const newMergeAnimations: Record<number, MergeAnimation> = {}
 
     // For each current group, check if it contains items from multiple previous groups
     currentGroups.forEach((currentGroup) => {
@@ -130,7 +217,7 @@ export default function GroupingCanvas() {
       if (currentGroup.isSingle) return
 
       // Find all previous groups that have items now in this current group
-      const sourceGroups = new Set()
+      const sourceGroups = new Set<number>()
       currentGroup.items.forEach((itemId) => {
         prevGroups.forEach((prevGroup) => {
           if (prevGroup.items.includes(itemId)) {
@@ -145,7 +232,7 @@ export default function GroupingCanvas() {
           targetGroup: currentGroup,
           sourceGroups: Array.from(sourceGroups)
             .map((id) => prevGroups.find((g) => g.id === id))
-            .filter(Boolean),
+            .filter((g): g is Group => g !== undefined),
           startTime: Date.now(),
           duration: 800, // Longer animation duration for more fluid effect
         }
@@ -169,39 +256,42 @@ export default function GroupingCanvas() {
 
     // Create a copy of items for processing
     const itemsCopy = [...items]
-    const processed = new Set()
-    const newGroups = []
+    const processed = new Set<number>()
+    const newGroups: Group[] = []
 
     // Process each item to find connected components
     for (let i = 0; i < itemsCopy.length; i++) {
       if (processed.has(i)) continue
 
       const item = itemsCopy[i]
+      if (!item) continue
 
       // Use breadth-first search to find all connected items
       const queue = [i]
-      const groupItems = []
-      const itemPositions = []
+      const groupItems: number[] = []
+      const itemPositions: Array<{ x: number; y: number; size: number }> = []
 
       while (queue.length > 0) {
         const currentIdx = queue.shift()
-        if (processed.has(currentIdx)) continue
+        if (currentIdx === undefined || processed.has(currentIdx)) continue
 
         processed.add(currentIdx)
         groupItems.push(currentIdx)
-        itemPositions.push({
-          x: itemsCopy[currentIdx].x,
-          y: itemsCopy[currentIdx].y,
-          size: itemsCopy[currentIdx].size,
-        })
-
         const currentItem = itemsCopy[currentIdx]
+        if (currentItem) {
+          itemPositions.push({
+            x: currentItem.x,
+            y: currentItem.y,
+            size: currentItem.size,
+          })
+        }
 
         // Check proximity to other items
         for (let j = 0; j < itemsCopy.length; j++) {
           if (processed.has(j) || queue.includes(j) || j === currentIdx) continue
 
           const otherItem = itemsCopy[j]
+          if (!otherItem || !currentItem) continue
 
           // Calculate distance between item centers
           const dx = currentItem.x - otherItem.x
@@ -225,10 +315,12 @@ export default function GroupingCanvas() {
 
         groupItems.forEach((idx) => {
           const item = itemsCopy[idx]
-          minX = Math.min(minX, item.x - item.size)
-          minY = Math.min(minY, item.y - item.size)
-          maxX = Math.max(maxX, item.x + item.size)
-          maxY = Math.max(maxY, item.y + item.size)
+          if (item) {
+            minX = Math.min(minX, item.x - item.size)
+            minY = Math.min(minY, item.y - item.size)
+            maxX = Math.max(maxX, item.x + item.size)
+            maxY = Math.max(maxY, item.y + item.size)
+          }
         })
 
         // Add extra padding for organic shapes
@@ -239,9 +331,12 @@ export default function GroupingCanvas() {
         maxY += padding
 
         // Set all items to this group
-        const groupId = groupItems[0] + 1 // Simple ID based on first item
+        const groupId = (groupItems[0] ?? 0) + 1 // Simple ID based on first item
         groupItems.forEach((idx) => {
-          itemsCopy[idx].groupId = groupId
+          const item = itemsCopy[idx]
+          if (item) {
+            item.groupId = groupId
+          }
         })
 
         // Add group with bounding box and control points for blob
@@ -251,7 +346,7 @@ export default function GroupingCanvas() {
           y: minY,
           width: maxX - minX,
           height: maxY - minY,
-          items: groupItems.map((idx) => itemsCopy[idx].id),
+          items: groupItems.map((idx) => itemsCopy[idx]?.id ?? 0).filter(id => id !== 0),
           itemPositions,
           isSingle: groupItems.length === 1,
         })
@@ -263,7 +358,7 @@ export default function GroupingCanvas() {
 
   // Check if a group contains the dragging item
   const isGroupBeingDragged = useCallback(
-    (group) => {
+    (group: Group) => {
       if (!draggingItem) return false
       return group.items.includes(draggingItem.id)
     },
@@ -271,7 +366,7 @@ export default function GroupingCanvas() {
   )
 
   // Handle mouse enter on a group
-  const handleGroupMouseEnter = useCallback((groupId) => {
+  const handleGroupMouseEnter = useCallback((groupId: number) => {
     setHoveredGroupId(groupId)
   }, [])
 
@@ -282,7 +377,7 @@ export default function GroupingCanvas() {
 
   // Get the group ID for an item
   const getItemGroupId = useCallback(
-    (itemId) => {
+    (itemId: number) => {
       for (const group of groups) {
         if (group.items.includes(itemId)) {
           return group.id
@@ -295,22 +390,6 @@ export default function GroupingCanvas() {
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="bg-gray-100 p-4 flex space-x-4">
-        <button
-          className={`px-4 py-2 rounded ${isDeleteMode ? "bg-red-600 text-white" : "bg-gray-200"}`}
-          onClick={() => {
-            setIsDeleteMode(!isDeleteMode)
-          }}
-        >
-          {isDeleteMode ? "Cancel Delete" : "Delete Items"}
-        </button>
-        <p className="text-gray-600 flex items-center">
-          {isDeleteMode
-            ? "Click on items to delete them"
-            : "Drag items freely - they will automatically group with organic, fluid backgrounds"}
-        </p>
-      </div>
-
       <div
         ref={canvasRef}
         className="flex-grow relative overflow-auto"
@@ -388,11 +467,11 @@ export default function GroupingCanvas() {
               key={item.id}
               item={item}
               isBeingDragged={draggingItem?.id === item.id}
-              isDeleteMode={isDeleteMode}
+              isDeleteMode={false}
               onMouseDown={handleItemMouseDown}
               isFaded={shouldFade}
-              groupId={itemGroupId}
-              onMouseEnter={() => handleGroupMouseEnter(itemGroupId)}
+              groupId={itemGroupId?.toString() ?? ""}
+              onMouseEnter={() => itemGroupId && handleGroupMouseEnter(itemGroupId)}
               onMouseLeave={handleGroupMouseLeave}
             />
           )

@@ -35,9 +35,9 @@ const GroupLabel = memo(function GroupLabel({ group, items, isVisible }: GroupLa
 
   return (
     <div
-      className="absolute px-2 py-1 bg-white bg-opacity-80 rounded text-xs font-medium shadow-sm"
       style={{
-        top: group.height - 24,
+        position: "absolute",
+        top: -30,
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 5,
@@ -48,9 +48,33 @@ const GroupLabel = memo(function GroupLabel({ group, items, isVisible }: GroupLa
         opacity: isVisible ? 1 : 0,
         transition: "opacity 0.2s ease-in-out",
         pointerEvents: "none",
+        fontFamily: "HAL Timezone Unlicensed, sans-serif",
+        fontSize: "18px",
+        textAlign: "center",
+        padding: "4px 8px",
+        color: "#000000",
       }}
     >
-      {label}
+      {/* Shadow text layer */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          color: "#F4AEC8",
+          WebkitTextStroke: "6px #F4AEC8",
+          filter: "blur(12px)",
+          zIndex: -1,
+        }}
+      >
+        {label}
+      </div>
+      {/* Main text layer */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {label}
+      </div>
     </div>
   )
 })

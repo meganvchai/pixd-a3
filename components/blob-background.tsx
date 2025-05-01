@@ -1,21 +1,62 @@
 "use client"
 
+// Declare module for simplex-noise
+declare module 'simplex-noise' {
+  export function createNoise2D(): (x: number, y: number) => number;
+}
+
 import { useEffect, useState, useRef, memo } from "react"
 import { createNoise2D } from "simplex-noise"
 
+interface GroupItem {
+  x: number
+  y: number
+  size: number
+}
+
+interface Group {
+  x: number
+  y: number
+  width: number
+  height: number
+  isSingle?: boolean
+  itemPositions: GroupItem[]
+}
+
+interface MergeAnimation {
+  startTime: number
+  duration: number
+}
+
+interface Point {
+  x: number
+  y: number
+  baseX?: number
+  baseY?: number
+  angle?: number
+  radius?: number
+}
+
+interface BlobBackgroundProps {
+  group: Group
+  isDragging: boolean
+  color: string
+  mergeAnimation: MergeAnimation | null
+}
+
 // Use memo to prevent unnecessary re-renders
-const BlobBackground = memo(function BlobBackground({ group, isDragging, color, mergeAnimation }) {
-  const canvasRef = useRef(null)
+const BlobBackground = memo(function BlobBackground({ group, isDragging, color, mergeAnimation }: BlobBackgroundProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
-  const animationFrameRef = useRef(null)
+  const animationFrameRef = useRef<number | null>(null)
   // Create noise function only once
-  const noiseRef = useRef(null)
+  const noiseRef = useRef<((x: number, y: number) => number) | null>(null)
   if (noiseRef.current === null) {
     noiseRef.current = createNoise2D()
   }
-  const timeRef = useRef(0)
-  const animationRef = useRef(null)
-  const lastDrawTimeRef = useRef(0)
+  const timeRef = useRef<number>(0)
+  const animationRef = useRef<number | null>(null)
+  const lastDrawTimeRef = useRef<number>(0)
 
   // Animate the blob continuously for fluid movement with throttling
   useEffect(() => {
@@ -28,7 +69,9 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
         if (canvasRef.current) {
           const canvas = canvasRef.current
           const ctx = canvas.getContext("2d")
-          drawBlob(ctx, group, color, animationProgress)
+          if (ctx) {
+            drawBlob(ctx, group, color, animationProgress)
+          }
           lastDrawTimeRef.current = now
         }
       }
@@ -74,7 +117,12 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
   }, [mergeAnimation])
 
   // Draw a blob shape that encompasses all items in the group
-  const drawBlob = (ctx, group, color, animationProgress) => {
+  const drawBlob = (
+    ctx: CanvasRenderingContext2D,
+    group: Group,
+    color: string,
+    animationProgress: number
+  ) => {
     const { width, height, itemPositions } = group
 
     // If there are no items, don't draw anything
@@ -92,16 +140,15 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
 
       // Add subtle pulsation and wobble
       const time = timeRef.current
-      const pulseFactor = 1 + Math.sin(time * 2) * 0.05
-      const wobbleAmount = 2 // Reduced wobble amount for smoother edges
+      const pulseFactor = 1 + Math.sin(time * 2) * 0.03 // Reduced pulsation
+      const wobbleAmount = 1.5 // Reduced wobble amount for smoother edges
 
       ctx.beginPath()
 
       // Draw a wobbly circle with more points for smoother edges
-      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 32) {
-        // Increased number of points
-        const noise = noiseRef.current(Math.cos(angle) + time, Math.sin(angle) + time) * wobbleAmount
-        const radius = baseRadius * pulseFactor + noise
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 64) { // Doubled number of points
+        const noise = noiseRef.current?.(Math.cos(angle) + time, Math.sin(angle) + time) ?? 0
+        const radius = baseRadius * pulseFactor + noise * wobbleAmount
         const x = centerX + Math.cos(angle) * radius
         const y = centerY + Math.sin(angle) * radius
 
@@ -123,9 +170,7 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
     }
 
     // For groups, create a more organic blob shape
-
-    // Create control points around each item
-    let controlPoints = []
+    let controlPoints: Point[] = []
     const centerX = width / 2
     const centerY = height / 2
 
@@ -136,7 +181,7 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
       const radius = item.size * 0.8 // Slightly smaller radius for smoother group shapes
 
       // Add more control points for smoother curves
-      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 24) {
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 48) { // Doubled number of points
         // Increased number of points
         controlPoints.push({
           x: x + Math.cos(angle) * radius,
@@ -179,9 +224,9 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
     if (controlPoints.length > 0) {
       // Add noise to control points for organic movement
       const time = timeRef.current
-      const noisyPoints = controlPoints.map((point) => {
-        const noise = noiseRef.current(point.x / 100 + time, point.y / 100 + time)
-        const wobbleAmount = 3 // Reduced wobble amount for smoother edges
+      const noisyPoints = controlPoints.map((point: Point) => {
+        const noise = noiseRef.current?.(point.x / 100 + time, point.y / 100 + time) ?? 0
+        const wobbleAmount = 2 // Reduced wobble amount for smoother edges
         return {
           ...point,
           x: point.x + noise * wobbleAmount,
@@ -256,7 +301,7 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
   }
 
   // Function to get the convex hull of points (Graham scan algorithm)
-  const getConvexHull = (points) => {
+  const getConvexHull = (points: Point[]): Point[] => {
     if (points.length <= 3) return points
 
     // Find the point with the lowest y-coordinate (and leftmost if tied)
@@ -296,7 +341,7 @@ const BlobBackground = memo(function BlobBackground({ group, isDragging, color, 
   }
 
   // Helper function for convex hull algorithm
-  const isLeftTurn = (p1, p2, p3) => {
+  const isLeftTurn = (p1: Point, p2: Point, p3: Point): boolean => {
     return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x) > 0
   }
 
