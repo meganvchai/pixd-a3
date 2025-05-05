@@ -25,6 +25,11 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: /pixd-a3
 
+      - name: Copy public directory
+        run: |
+          cp -r public/* out/
+          cp -r public/images out/images
+
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
