@@ -1,5 +1,32 @@
 "use client"
 
+import { CSSProperties } from "react"
+
+interface Item {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  type: string
+}
+
+interface Group {
+  id: string
+  items: string[]
+  isSingle: boolean
+}
+
+interface GridItemProps {
+  item: Item
+  isBeingDragged: boolean
+  isDeleteMode: boolean
+  onMouseDown: (e: React.MouseEvent, item: Item) => void
+  getGridCellColor: (id: string) => string
+  groups: Group[]
+  gridSize: number
+}
+
 export default function GridItem({
   item,
   isBeingDragged,
@@ -8,7 +35,7 @@ export default function GridItem({
   getGridCellColor,
   groups,
   gridSize,
-}) {
+}: GridItemProps) {
   // Find if this item is part of a group with multiple items
   const group = groups.find((g) => g.items.includes(item.id))
   const isSingleItem = !group || group.isSingle
@@ -28,7 +55,7 @@ export default function GridItem({
 
   const blobTop = isCircleBlob ? gridY * gridSize + gridSize / 2 - size / 2 : (gridY - 0.2) * gridSize
 
-  const individualBlobStyle = {
+  const individualBlobStyle: CSSProperties = {
     position: "absolute",
     left: `${blobLeft}px`,
     top: `${blobTop}px`,
@@ -40,7 +67,7 @@ export default function GridItem({
     transition: isBeingDragged ? "none" : "all 0.3s ease-out",
   }
 
-  const style = {
+  const style: CSSProperties = {
     position: "absolute",
     left: `${item.x}px`,
     top: `${item.y}px`,

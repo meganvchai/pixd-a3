@@ -15,7 +15,7 @@ interface Item {
 }
 
 interface Group {
-  id: number
+  id: string
   items: number[]
   isSingle: boolean
   x: number
@@ -112,8 +112,8 @@ export default function GroupingCanvas() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   
   const [groups, setGroups] = useState<Group[]>([])
-  const [mergeAnimations, setMergeAnimations] = useState<Record<number, MergeAnimation>>({})
-  const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null)
+  const [mergeAnimations, setMergeAnimations] = useState<Record<string, MergeAnimation>>({})
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
 
   // Store previous groups in a ref to avoid triggering re-renders
   const previousGroupsRef = useRef<Group[]>([])
@@ -139,8 +139,8 @@ export default function GroupingCanvas() {
   }, [items])
 
   // Get color for a group based on its ID
-  const getGroupColor = useCallback((id: number): string => {
-    const colorIndex = (id - 1) % GROUP_COLORS.length
+  const getGroupColor = useCallback((id: string): string => {
+    const colorIndex = (parseInt(id) - 1) % GROUP_COLORS.length
     return GROUP_COLORS[colorIndex]
   }, [])
 
@@ -204,7 +204,7 @@ export default function GroupingCanvas() {
     if (!prevGroups || prevGroups.length === 0) return
 
     // Find groups that have merged
-    const newMergeAnimations: Record<number, MergeAnimation> = {}
+    const newMergeAnimations: Record<string, MergeAnimation> = {}
 
     // For each current group, check if it contains items from multiple previous groups
     currentGroups.forEach((currentGroup) => {
@@ -212,7 +212,7 @@ export default function GroupingCanvas() {
       if (currentGroup.isSingle) return
 
       // Find all previous groups that have items now in this current group
-      const sourceGroups = new Set<number>()
+      const sourceGroups = new Set<string>()
       currentGroup.items.forEach((itemId) => {
         prevGroups.forEach((prevGroup) => {
           if (prevGroup.items.includes(itemId)) {
@@ -226,7 +226,7 @@ export default function GroupingCanvas() {
         newMergeAnimations[currentGroup.id] = {
           targetGroup: currentGroup,
           sourceGroups: Array.from(sourceGroups)
-            .map((id) => prevGroups.find((g) => g.id === id))
+            .map((id) => prevGroups.find((g) => g.id === id.toString()))
             .filter((g): g is Group => g !== undefined),
           startTime: Date.now(),
           duration: 200, // Faster, less noticeable animation
@@ -326,11 +326,11 @@ export default function GroupingCanvas() {
         maxY += padding
 
         // Set all items to this group
-        const groupId = (groupItems[0] ?? 0) + 1 // Simple ID based on first item
+        const groupId = (groupItems[0] ?? 0).toString() // Simple ID based on first item
         groupItems.forEach((idx) => {
           const item = itemsCopy[idx]
           if (item) {
-            item.groupId = groupId
+            item.groupId = parseInt(groupId)
           }
         })
 
@@ -361,7 +361,7 @@ export default function GroupingCanvas() {
   )
 
   // Handle mouse enter on a group
-  const handleGroupMouseEnter = useCallback((groupId: number) => {
+  const handleGroupMouseEnter = useCallback((groupId: string) => {
     setHoveredGroupId(groupId)
   }, [])
 

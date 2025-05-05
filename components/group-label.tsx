@@ -10,6 +10,14 @@ interface Group {
 
 interface GroupLabelProps {
   group: Group;
+  items: {
+    id: number;
+    type: string;
+    groupId: number;
+    x: number;
+    y: number;
+    size: number;
+  }[];
   isVisible: boolean;
 }
 
@@ -314,7 +322,7 @@ function generateGroupName(objects: ArchiveObject[]): string {
 }
 
 // GroupLabel component for displaying group names with hover visibility
-export default function GroupLabel({ group, isVisible }: GroupLabelProps) {
+export default function GroupLabel({ group, items, isVisible }: GroupLabelProps) {
   const [label, setLabel] = useState<string>("Group");
   const [isClient, setIsClient] = useState(false);
 
@@ -353,7 +361,7 @@ export default function GroupLabel({ group, isVisible }: GroupLabelProps) {
   }, [group.items, isClient]);
 
   return (
-    <div 
+    <div
       className="group-label"
       style={{
         opacity: isVisible ? 1 : 0,
@@ -393,7 +401,7 @@ export default function GroupLabel({ group, isVisible }: GroupLabelProps) {
       </div>
       {/* Main text layer */}
       <div style={{ position: 'relative', zIndex: 1 }}>
-        {label}
+      {label}
       </div>
     </div>
   );
