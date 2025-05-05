@@ -313,6 +313,7 @@ function generateGroupName(objects: ArchiveObject[]): string {
   return nameTemplates[idSum % nameTemplates.length];
 }
 
+// GroupLabel component for displaying group names with hover visibility
 export default function GroupLabel({ group, isVisible }: GroupLabelProps) {
   const [label, setLabel] = useState<string>("Group");
   const [isClient, setIsClient] = useState(false);
